@@ -1,9 +1,8 @@
 # build.ps1 - ParrotBoost Professional Build Orchestrator
 $ErrorActionPreference = "Stop"
 
-# Paths relative to this script (inside DevKit folder)
-$devkitPath = $PSScriptRoot
-$rootPath = Split-Path $devkitPath -Parent
+# Paths relative to this script
+$rootPath = $PSScriptRoot
 $sourcePath = Join-Path $rootPath "Source\ParrotBoost"
 $outputExe = Join-Path $rootPath "ParrotBoost.exe"
 
@@ -11,7 +10,7 @@ function Write-Log($msg) {
     Write-Host "  [BUILD] $msg" -ForegroundColor Cyan
 }
 
-Write-Log "Initializing zero-clutter build from DevKit..."
+Write-Log "Initializing zero-clutter build..."
 
 # 1. Cleaning existing binary and stopping process
 if (Test-Path $outputExe) { 
@@ -37,7 +36,7 @@ try {
     # Using dotnet publish to create a self-contained single file in a temporary folder
     $tempPublish = Join-Path $sourcePath "temp_publish"
     
-    dotnet publish -c Release -r win-x64 --self-contained true `
+    dotnet publish -c Release -f net11.0-windows -r win-x64 --self-contained true `
         -p:PublishSingleFile=true `
         -p:PublishReadyToRun=true `
         -p:IncludeNativeLibrariesForSelfExtract=true `

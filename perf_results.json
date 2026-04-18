@@ -1,0 +1,10 @@
+﻿{
+    "Iteration":  1,
+    "StartupMs":  2574,
+    "PeakWorkingSetMB":  131.48,
+    "WorkingSetMB":  94.93,
+    "CpuSecondsDelta":  3.73,
+    "ReadMBDelta":  0,
+    "WriteMBDelta":  0,
+    "ExitedEarly":  false
+}

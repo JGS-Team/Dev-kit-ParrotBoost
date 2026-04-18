@@ -21,13 +21,33 @@ if (-not (Test-Path $exePath)) {
 
 # 2. Permissions Check
 $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+$isAdmin = $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
     Log-Report "WARNING: Script not running as Administrator. Some tests may fail."
 } else {
     Log-Report "Admin privileges confirmed."
 }
 
-# 3. Execution Test (5-second stability test)
+# 3. Headless production verification
+if ($isAdmin) {
+    Log-Report "Running headless self-diagnostics..."
+    try {
+        & $exePath --self-diagnostics
+        if ($LASTEXITCODE -ne 0) {
+            Log-Report "ERROR: Self-diagnostics failed with exit code: $LASTEXITCODE"
+            exit $LASTEXITCODE
+        }
+
+        Log-Report "SUCCESS: Self-diagnostics passed."
+    } catch {
+        Log-Report "CRITICAL ERROR during self-diagnostics: $($_.Exception.Message)"
+        exit 1
+    }
+} else {
+    Log-Report "Skipping packaged self-diagnostics in non-admin mode because the executable may trigger an elevation prompt."
+}
+
+# 4. Execution Test (5-second stability test)
 Log-Report "Probing application stability (5s)..."
 try {
     $process = Start-Process -FilePath $exePath -PassThru -ErrorAction Stop
@@ -45,7 +65,7 @@ try {
     Log-Report "CRITICAL ERROR during execution test: $($_.Exception.Message)"
 }
 
-# 4. Clean up after test
+# 5. Clean up after test
 Log-Report "Diagnostic completed. Generating report..."
 "--- PARROTBOOST DIAGNOSTIC REPORT ---`nData: $(Get-Date)`nLocation: $exePath`nStatus: PASS" | Out-File $reportPath -Force
 Log-Report "Report saved: $reportPath"
