@@ -1,7 +1,5 @@
-# test.ps1 - ParrotBoost Professional Diagnostic & Test System
 $ErrorActionPreference = "Continue"
 
-# Paths relative to this script (inside DevKit folder)
 $devkitPath = $PSScriptRoot
 $rootPath = Split-Path $devkitPath -Parent
 $exePath = Join-Path $rootPath "ParrotBoost.exe"
@@ -13,13 +11,11 @@ function Log-Report($msg) {
 
 Log-Report "Starting clean diagnostic suite from DevKit..."
 
-# 1. Existence Check
 if (-not (Test-Path $exePath)) {
     Log-Report "ERROR: ParrotBoost.exe not found in root. Run build.ps1 first."
     exit 1
 }
 
-# 2. Permissions Check
 $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 $isAdmin = $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
@@ -28,7 +24,6 @@ if (-not $isAdmin) {
     Log-Report "Admin privileges confirmed."
 }
 
-# 3. Headless production verification
 if ($isAdmin) {
     Log-Report "Running headless self-diagnostics..."
     try {
@@ -47,7 +42,6 @@ if ($isAdmin) {
     Log-Report "Skipping packaged self-diagnostics in non-admin mode because the executable may trigger an elevation prompt."
 }
 
-# 4. Execution Test (5-second stability test)
 Log-Report "Probing application stability (5s)..."
 try {
     $process = Start-Process -FilePath $exePath -PassThru -ErrorAction Stop
@@ -65,12 +59,10 @@ try {
     Log-Report "CRITICAL ERROR during execution test: $($_.Exception.Message)"
 }
 
-# 5. Clean up after test
 Log-Report "Diagnostic completed. Generating report..."
 "--- PARROTBOOST DIAGNOSTIC REPORT ---`nData: $(Get-Date)`nLocation: $exePath`nStatus: PASS" | Out-File $reportPath -Force
 Log-Report "Report saved: $reportPath"
 
-# Final cleanup of any possible temporary files (garbage)
 Remove-Item -Path "$exePath.old" -ErrorAction SilentlyContinue
 Remove-Item -Path (Join-Path $rootPath "build_log.txt") -ErrorAction SilentlyContinue
 

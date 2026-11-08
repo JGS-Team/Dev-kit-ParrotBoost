@@ -1,8 +1,6 @@
-# build.ps1 - ParrotBoost Professional Build Orchestrator
 $ErrorActionPreference = "Stop"
 
-# Paths relative to this script
-$rootPath = $PSScriptRoot
+$rootPath = Split-Path $PSScriptRoot -Parent
 $sourcePath = Join-Path $rootPath "Source\ParrotBoost"
 $outputExe = Join-Path $rootPath "ParrotBoost.exe"
 
@@ -12,7 +10,6 @@ function Write-Log($msg) {
 
 Write-Log "Initializing zero-clutter build..."
 
-# 1. Cleaning existing binary and stopping process
 if (Test-Path $outputExe) { 
     Write-Log "Ensuring binary is not in use..."
     try {
@@ -27,13 +24,11 @@ if (Test-Path $outputExe) {
     }
 }
 
-# 2. Build and Publish
 try {
     Write-Log "Compiling Source..."
     $currentDir = Get-Location
     Set-Location $sourcePath
     
-    # Using dotnet publish to create a self-contained single file in a temporary folder
     $tempPublish = Join-Path $sourcePath "temp_publish"
     
     dotnet publish -c Release -f net11.0-windows -r win-x64 --self-contained true `
@@ -50,7 +45,6 @@ try {
         throw "Build failed: Output binary not found."
     }
     
-    # 3. Cleanup "garbage" (Zero-Clutter)
     Write-Log "Cleaning up build artifacts..."
     Set-Location $rootPath
     Remove-Item (Join-Path $sourcePath "bin") -Recurse -Force -ErrorAction SilentlyContinue
