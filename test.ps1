@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Continue"
+$ErrorActionPreference = "Stop"
 
 $devkitPath = $PSScriptRoot
 $rootPath = Split-Path $devkitPath -Parent
@@ -19,27 +19,27 @@ if (-not (Test-Path $exePath)) {
 $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 $isAdmin = $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Log-Report "WARNING: Script not running as Administrator. Some tests may fail."
-} else {
+    Log-Report "Running in standard user mode (non-Admin)."
+}
+else {
     Log-Report "Admin privileges confirmed."
 }
 
-if ($isAdmin) {
-    Log-Report "Running headless self-diagnostics..."
-    try {
-        & $exePath --self-diagnostics
-        if ($LASTEXITCODE -ne 0) {
-            Log-Report "ERROR: Self-diagnostics failed with exit code: $LASTEXITCODE"
-            exit $LASTEXITCODE
-        }
-
-        Log-Report "SUCCESS: Self-diagnostics passed."
-    } catch {
-        Log-Report "CRITICAL ERROR during self-diagnostics: $($_.Exception.Message)"
+Log-Report "Running headless self-diagnostics..."
+try {
+    $diagProc = Start-Process -FilePath $exePath -ArgumentList "--self-diagnostics" -Wait -PassThru -ErrorAction Stop
+    $diagExit = $diagProc.ExitCode
+    if ($diagExit -ne 0) {
+        Log-Report "ERROR: Self-diagnostics failed with exit code: $diagExit"
+        "--- PARROTBOOST DIAGNOSTIC REPORT ---`nData: $(Get-Date)`nLocation: $exePath`nStatus: FAIL (Self-diagnostics exit $diagExit)" | Out-File $reportPath -Force
         exit 1
     }
-} else {
-    Log-Report "Skipping packaged self-diagnostics in non-admin mode because the executable may trigger an elevation prompt."
+    Log-Report "SUCCESS: Self-diagnostics passed."
+}
+catch {
+    Log-Report "CRITICAL ERROR during self-diagnostics: $($_.Exception.Message)"
+    "--- PARROTBOOST DIAGNOSTIC REPORT ---`nData: $(Get-Date)`nLocation: $exePath`nStatus: FAIL ($($_.Exception.Message))" | Out-File $reportPath -Force
+    exit 1
 }
 
 Log-Report "Probing application stability (5s)..."
@@ -47,16 +47,22 @@ try {
     $process = Start-Process -FilePath $exePath -PassThru -ErrorAction Stop
     Log-Report "Process PID: $($process.Id). Waiting for stability..."
     Start-Sleep -Seconds 5
-    
+
     if ($process.HasExited) {
         $exitCode = $process.ExitCode
         Log-Report "ERROR: Process exited prematurely with code: $exitCode"
-    } else {
+        "--- PARROTBOOST DIAGNOSTIC REPORT ---`nData: $(Get-Date)`nLocation: $exePath`nStatus: FAIL (Exited early with code $exitCode)" | Out-File $reportPath -Force
+        exit 1
+    }
+    else {
         Log-Report "SUCCESS: Application is running stably."
         $process.Kill()
     }
-} catch {
+}
+catch {
     Log-Report "CRITICAL ERROR during execution test: $($_.Exception.Message)"
+    "--- PARROTBOOST DIAGNOSTIC REPORT ---`nData: $(Get-Date)`nLocation: $exePath`nStatus: FAIL ($($_.Exception.Message))" | Out-File $reportPath -Force
+    exit 1
 }
 
 Log-Report "Diagnostic completed. Generating report..."
